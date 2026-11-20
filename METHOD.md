@@ -21,7 +21,7 @@ The rate moves for two opposite reasons: new players joining dilute it
 (`N` grows) while players progressing raise it (`E` grows). Forecasting
 the ratio directly confounds the two; the program separates them:
 
-1. Reconstruct `E_i(t) = rate_i(t) / 100 * N(t)` for each trophy from every
+1. Rebuild `E_i(t) = rate_i(t) / 100 * N(t)` for each trophy from every
    read in the case history.
 2. Fit `ln N(t)` linear in `ln(1 + h)` and, per trophy, `ln E_i(t)` linear
    in `ln(1 + h)`, where `h` is hours since launch (2026-11-19T00:00:00Z),
@@ -72,7 +72,8 @@ The factor is calibrated on two documented facts, not invented:
 
 Validation case: history = kit practice case p01 (reads to 2026-11-19
 03:30Z), truth = the live Exophase snapshot at 2026-11-19 17:51Z
-(861-minute horizon). Pinball loss on the exact scorer in RULES.txt:
+(861-minute horizon). Pinball loss on the exact scorer in RULES.txt
+(re-run by `python3 scripts/validate.py` on the rebuilt program):
 
 | model | loss | typical miss | 90% coverage |
 |---|---|---|---|
@@ -97,9 +98,8 @@ Caveats, stated plainly:
   curve baseline, with the N/E separation as the improvement.
 - On a synthetic rich history (73 reads, N 638 -> 26,158, mixed
   per-trophy trajectories — mechanics test only, no loss claimed), the
-  program's medians sit a median 0.21 logit below the house curve
-  baseline's and 0.67 below the house baseline's, i.e. further along the
-  observed dilution trend, with a near-identical spread width.
+  program's output is valid (55 rows, ids 1–55, five quantiles each,
+  0–100, non-decreasing, 2,722 bytes, ~0.4 s).
 - The live snapshot's players-tracked count was not in the extracted
   page text, so it is recorded as unknown; only the per-trophy rates are
   used. No earn rate in this repo is invented: every rate comes from the
@@ -109,9 +109,31 @@ Caveats, stated plainly:
 
 ```sh
 mkdir -p out && MAKEFUN_INPUT_DIR=<kit>/input MAKEFUN_OUTPUT_DIR=out node main.ts
+python3 scripts/validate.py
 ```
 
 Deterministic: two runs on the practice cases produce byte-identical
-outputs (sha256 `ce1bac1c63c8` for both `p00.out` and `p01.out`). Runtime
-~0.4 s per case on this machine, far under the 8-second cap. Output
-2,775 bytes per practice case (cap 65,536).
+outputs (sha256 `ce1bac1c63c88f1f351ab85df39c104d578173868024b4cb9037157d1046d65e`
+for both `p00.out` and `p01.out`). Runtime ~0.4 s per case on this machine,
+far under the 8-second cap. Output 2,775 bytes per practice case (cap 65,536).
+
+## Rebuild (2026-11-20)
+
+The first build of this entry (commit 3307170, same design and same
+validation numbers) could not be submitted: its transcript bundle could
+not be written because the run record's parent chain was missing — the
+build session had been started by a hand-off, and every candidate parent
+was itself one of the bundle's evidence sessions. A sealed recording was
+not an alternative: the server refuses `makefun record` for this
+competition (HTTP 400 — its entries upload their transcripts as a bundle).
+
+So the entry was rebuilt from a fresh scheduled session (this one), which
+opens with the approval itself, and every entry file was re-authored in
+that session: `main.ts`, `README.md`, `METHOD.md` and `scripts/validate.py`
+were written fresh here, and the validation above was re-run on the
+rebuilt program. The rebuilt program's practice-case outputs are
+byte-identical to the first build's (`ce1bac1c…`), and its validation
+loss is the same 0.398191 — the design is unchanged, only the run record
+is whole. The data snapshot (`data/exophase-snapshot-20261119T1751Z.json`)
+is the same real snapshot, unchanged: it is data, not code, and no rate
+in it is invented.
